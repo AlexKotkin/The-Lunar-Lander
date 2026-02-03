@@ -8,9 +8,10 @@ This template uses the Gymnasium LunarLander-v3 environment.
 Students will implement a rule-based agent to land the spacecraft.
 """
 
-import gymnasium as gym
-import sys
+import os
 import time
+
+import gymnasium as gym
 import pygame
 
 # GRAVITY setting
@@ -26,17 +27,18 @@ USE_AGENT = False
 ENV_NAME = "LunarLander-v3"
 
 # Action definitions
-ACTION_NOTHING = 0      # Do nothing
+ACTION_NOTHING = 0  # Do nothing
 ACTION_LEFT_ENGINE = 1  # Fire left orientation engine
 ACTION_MAIN_ENGINE = 2  # Fire main engine (downward thrust)
-ACTION_RIGHT_ENGINE = 3 # Fire right orientation engine
+ACTION_RIGHT_ENGINE = 3  # Fire right orientation engine
+
 
 # GAME STATE CLASS
 class GameState:
     def __init__(self, observation):
         """
         Initialize game state from Gymnasium observation.
-        
+
         The LunarLander-v3 observation space consists of 8 values:
         - obs[0]: x position (horizontal position of the lander)
         - obs[1]: y position (vertical position of the lander)
@@ -55,14 +57,14 @@ class GameState:
         self.angular_velocity = observation[5]
         self.left_leg_contact = observation[6]
         self.right_leg_contact = observation[7]
-        
+
         # Store raw observation for convenience
         self.observation = observation
-        
+
         # Score tracking
         self.score = 0.0
         self.episode_reward = 0.0
-        
+
         # Current action
         self.action = ACTION_NOTHING
 
@@ -84,6 +86,7 @@ class GameState:
         """Reset state for a new episode."""
         self.__init__(observation)
 
+
 def print_state(game):
     """
     Print the current game state to the terminal.
@@ -100,31 +103,33 @@ def print_state(game):
     print(f"Last Action: {game.action}")
     print("--------------------------")
 
+
 # TODO: IMPLEMENT HERE THE METHOD TO SAVE DATA TO FILE
 def print_line_data(game):
     """
     Return a string with the game state information to be saved to a file.
-    
+
     This method should return a string with the relevant information from
     the game state, with values separated by commas.
-    
+
     The student should decide which features are relevant for the task.
-    
+
     YOUR CODE HERE
     """
-    pass
+    return f"{game.x_position},{game.y_position},{game.x_velocity},{game.y_velocity},{game.angle},{game.angular_velocity},{game.action},{game.episode_reward},{game.score}\n"
+
 
 # TODO: IMPLEMENT HERE THE INTELLIGENT AGENT METHOD
 def move_tutorial_1(game):
     """
     Implement your own rule-based agent to land the spacecraft.
-    
+
     This method receives the current game state and must return an action:
     - ACTION_NOTHING (0): Do nothing
     - ACTION_LEFT_ENGINE (1): Fire left orientation engine (rotate clockwise)
     - ACTION_MAIN_ENGINE (2): Fire main engine (slow down descent)
     - ACTION_RIGHT_ENGINE (3): Fire right orientation engine (rotate counter-clockwise)
-    
+
     Goal: Land safely between the two flags on the landing pad.
     - Landing pad is always at coordinates (0, 0)
     - Landing outside the pad is possible but gives less reward
@@ -133,29 +138,30 @@ def move_tutorial_1(game):
     - Each leg contact gives +10 points
     - Firing main engine costs -0.3 points per frame
     - Firing side engines costs -0.03 points per frame
-    
+
     Tips:
     - Use y_velocity to control descent speed (should be slow when landing)
     - Use angle to keep the lander upright (close to 0)
     - Use x_position and x_velocity to center over the landing pad
-    
+
     YOUR CODE HERE
     """
     return ACTION_NOTHING
 
+
 def move_keyboard(keys_pressed):
     """
     Convert keyboard input to action.
-    
+
     Controls:
     - UP arrow or W: Fire main engine
     - LEFT arrow or A: Fire left engine
     - RIGHT arrow or D: Fire right engine
     - No key: Do nothing
-    
+
     Args:
         keys_pressed: pygame key state from pygame.key.get_pressed()
-    
+
     Returns:
         Action integer (0-3)
     """
@@ -168,24 +174,25 @@ def move_keyboard(keys_pressed):
     else:
         return ACTION_NOTHING
 
+
 def main():
     """Main game loop."""
     print("=" * 50)
     print("LUNAR LANDER - Machine Learning (UC3M)")
     print("=" * 50)
     print("\nInitializing environment...")
-    
+
     # Initialize pygame for keyboard input
     pygame.init()
-    
+
     # Create the environment with human rendering and configured gravity
     env = gym.make(ENV_NAME, gravity=GRAVITY, render_mode="human")
-    
+
     print(f"Environment: {ENV_NAME}")
     print(f"Gravity: {GRAVITY}")
     print(f"Action Space: {env.action_space}")
     print(f"Observation Space: {env.observation_space}")
-    
+
     if USE_AGENT:
         print("\nRunning in AGENT mode (move_tutorial_1)")
     else:
@@ -195,20 +202,26 @@ def main():
         print("  A or LEFT arrow  -> Fire left engine (rotate clockwise)")
         print("  D or RIGHT arrow -> Fire right engine (rotate counter-clockwise)")
         print("  Q or ESC         -> Quit game")
-    
+
     print("\nGoal: Land safely on the pad between the two flags!")
     print("-" * 50)
-    
+
     # Initialize the environment
     observation, info = env.reset()
     game = GameState(observation)
-    
+
     # FPS controller
     clock = pygame.time.Clock()
-    
+
     episode_count = 0
     running = True
-    
+
+    # write headers to data file
+    if not os.path.isfile("lunar_lander_data.csv"):
+        with open("lunar_lander_data.csv", "w") as f:
+            f.write(
+                "x_position,y_position,x_velocity,y_velocity,angle,angular_velocity,action,episode_reward,score\n"
+            )
     try:
         while running:
             # Handle pygame events
@@ -218,53 +231,62 @@ def main():
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                         running = False
-            
+
             if not running:
                 break
-            
+
             # Determine action based on USE_AGENT variable
             if USE_AGENT:
                 action = move_tutorial_1(game)
             else:
                 keys_pressed = pygame.key.get_pressed()
                 action = move_keyboard(keys_pressed)
-            
+
             # Store action in game state
             game.action = action
-            
+
             # Execute action
             observation, reward, terminated, truncated, info = env.step(action)
-            
+
             # Update game state
             game.update(observation, reward)
-            
+
             # Print state
             print_state(game)
-            
+            curr_tick_line_data = print_line_data(game)
+            with open("lunar_lander_data.csv", "a") as f:
+                f.write(curr_tick_line_data)
+
             # Check if episode ended
             if terminated or truncated:
                 episode_count += 1
                 if terminated:
                     if game.score > 0:
-                        print(f"\n*** EPISODE {episode_count} COMPLETE! Final Score: {game.score:.2f} ***")
+                        print(
+                            f"\n*** EPISODE {episode_count} COMPLETE! Final Score: {game.score:.2f} ***"
+                        )
                         if game.left_leg_contact and game.right_leg_contact:
                             print("*** SUCCESSFUL LANDING! ***\n")
                         else:
                             print("*** Landed but not on both legs ***\n")
                     else:
-                        print(f"\n*** CRASH! Episode {episode_count} Final Score: {game.score:.2f} ***\n")
+                        print(
+                            f"\n*** CRASH! Episode {episode_count} Final Score: {game.score:.2f} ***\n"
+                        )
                 else:
-                    print(f"\n*** Episode {episode_count} truncated. Final Score: {game.score:.2f} ***\n")
-                
+                    print(
+                        f"\n*** Episode {episode_count} truncated. Final Score: {game.score:.2f} ***\n"
+                    )
+
                 # Reset environment
                 time.sleep(1)
                 observation, info = env.reset()
                 game.reset(observation)
                 print("New episode started!\n")
-            
+
             # Control frame rate
             clock.tick(30)
-            
+
     except KeyboardInterrupt:
         print("\n\nGame interrupted by user.")
     finally:
@@ -272,6 +294,7 @@ def main():
         pygame.quit()
         print(f"\nGame ended. Total episodes: {episode_count}")
         print("Thank you for playing!")
+
 
 if __name__ == "__main__":
     main()
