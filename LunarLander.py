@@ -163,7 +163,9 @@ def move_tutorial_1(game):
     MAX_FALLING_VELOCITY = (
         -0.4
     )  # if falling faster than this, fire main engine to slow down
-
+    STOP_MAIN_ENGINE_HEIGHT = (
+        0.05  # stop firing main engine close to the ground to improve score slightly
+    )
     v_x_error = (
         game.x_velocity - (-game.x_position * GAME_X_POSITION_MULTIPLIER)
     )  # move towards center, proportional to distance and velocity, we want to be moving slowly towards the center as a general rule
@@ -193,7 +195,9 @@ def move_tutorial_1(game):
         return ACTION_RIGHT_ENGINE
 
     # if tilt is ok but we are falling too fast, fire main engine to slow down
-    if game.y_velocity < MAX_FALLING_VELOCITY:
+    if game.y_velocity < MAX_FALLING_VELOCITY and (
+        game.y_position > STOP_MAIN_ENGINE_HEIGHT
+    ):  # only fire main engine if we are above the ground
         return ACTION_MAIN_ENGINE
 
     return ACTION_NOTHING
@@ -266,7 +270,8 @@ def main():
     episode_count = 0
     running = True
 
-    # write headers to data file
+    # write headers to data file and create the file if it doesn't exist
+    # runs prior to the game loop for efficiency
     if not os.path.isfile("lunar_lander_data.csv"):
         with open("lunar_lander_data.csv", "w") as f:
             f.write(
@@ -303,8 +308,11 @@ def main():
 
             # Print state
             print_state(game)
+            # calling print_line_data gives us the string to write to the file, we can then write it to the file in one step
             curr_tick_line_data = print_line_data(game)
-            with open("lunar_lander_data.csv", "a") as f:
+            with open(
+                "lunar_lander_data.csv", "a"
+            ) as f:  # open in append mode to add data without overwriting
                 f.write(curr_tick_line_data)
 
             # Check if episode ended
