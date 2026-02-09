@@ -18,10 +18,10 @@ import pygame
 # Moon gravity   -> -1.62
 # Mars gravity   -> -3.72
 # Earth gravity  -> -9.81 (default, very hard!)
-GRAVITY = -1.62
+GRAVITY = -9.81
 
 # Agent mode: Set to True to use the Tutorial 1 agent, False for keyboard control
-USE_AGENT = False
+USE_AGENT = True
 
 # Environment configuration
 ENV_NAME = "LunarLander-v3"
@@ -146,6 +146,56 @@ def move_tutorial_1(game):
 
     YOUR CODE HERE
     """
+
+    # constants
+    # these constants control how aggressively the agent tries to correct its position and angle
+    # they were tuned through trial and error, visual debugging, they could probably be improved further with better tuning
+
+    GAME_X_POSITION_MULTIPLIER = 0.5  # how aggressively to correct horizontal position
+    MAX_TILT = 0.2  # force the lander to stay relatively upright
+    ANGLE_ERROR_MULTIPLIER = 0.5  # how aggressively to correct angle
+    ANGULAR_VELOCITY_DAMPENING = (
+        0.3  # how much to dampen corrections based on current angular velocity
+    )
+    ANGLE_TOLERANCE = (
+        0.05  # if angle error is within this range, consider it acceptable
+    )
+    MAX_FALLING_VELOCITY = (
+        -0.4
+    )  # if falling faster than this, fire main engine to slow down
+
+    v_x_error = (
+        game.x_velocity - (-game.x_position * GAME_X_POSITION_MULTIPLIER)
+    )  # move towards center, proportional to distance and velocity, we want to be moving slowly towards the center as a general rule
+
+    # clamp target angle to max tilt limits to prevent over-rotation
+    if v_x_error > MAX_TILT:
+        target_angle = MAX_TILT
+    elif v_x_error < -MAX_TILT:
+        target_angle = -MAX_TILT
+    else:
+        target_angle = v_x_error
+
+    # correct angle based on current angular velocity to prevent overshooting
+    angle_error = target_angle - game.angle
+    angle_todo = (ANGLE_ERROR_MULTIPLIER * angle_error) - (
+        ANGULAR_VELOCITY_DAMPENING * game.angular_velocity
+    )  # dampening constants to prevent overrotation
+
+    # if either leg on the ground, shut down robot
+    if game.right_leg_contact or game.left_leg_contact:
+        return ACTION_NOTHING
+
+    # fix angle first, if we are tilted
+    if angle_todo > ANGLE_TOLERANCE:
+        return ACTION_LEFT_ENGINE
+    elif angle_todo < -ANGLE_TOLERANCE:
+        return ACTION_RIGHT_ENGINE
+
+    # if tilt is ok but we are falling too fast, fire main engine to slow down
+    if game.y_velocity < MAX_FALLING_VELOCITY:
+        return ACTION_MAIN_ENGINE
+
     return ACTION_NOTHING
 
 

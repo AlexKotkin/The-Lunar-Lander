@@ -157,6 +157,9 @@ dependencies = [
 [package.metadata]
 requires-dist = [{ name = "gymnasium", extras = ["box2d"], specifier = ">=0.29.0" }]
 
+[package.metadata.requires-dev]
+dev = []
+
 [[package]]
 name = "typing-extensions"
 version = "4.15.0"
